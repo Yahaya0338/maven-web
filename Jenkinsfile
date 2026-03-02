@@ -1,84 +1,45 @@
-pipeline
-{
-  agent any
-  
-  tools
-  {
-    maven 'Maven_3.8.2'
-  }
-  
-  triggers
-  {
-    pollSCM('* * * * *')
-  }
-  
-  options
-  {
-    timestamps()
-    buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '5', daysToKeepStr: '', numToKeepStr: '5'))
-  }
-  
-  stages
-  {
-    stage('Checkout Code from GitHub')
-    {
-      steps()
-      {
-        git branch: 'development', credentialsId: '957b543e-6f77-4cef-9aec-82e9b0230975', url: 'https://github.com/devopstrainingblr/maven-web-application-1.git'
-      }
-    }
-    
-    stage('Build Project')
-    {
-      steps()
-      {
-        sh "mvn clean package"
-      }
-    }
-    
-    stage('Execute SonarQube Report')
-    {
-      steps()
-      {
-        sh "mvn clean sonar:sonar"
-      }
-    }
-    
-    stage('Upload Artifacts to Sonatype Nexus')
-    {
-      steps()
-      {
-        sh "mvn clean deploy"
-      }
-    }
-    
-    stage('Deploy Application to Tomcat')
-    {
-      steps()
-      {
-        sshagent(['bfe1b3c1-c29b-4a4d-b97a-c068b7748cd0'])
-        {
-          sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@35.154.190.162:/opt/apache-tomcat-9.0.50/webapps/"
-        }
-      }
-    }
-  }
+pipeline {
+        agent any
+        stages {
+	        stage("SCM") {
+                     steps {
+                           git branch: 'main', credentialsId: 'slave1', url: 'https://github.com/Yahaya0338/maven-web.git'
+                            }
+                          }
 
-post
-{
-  success
-  {
-    emailext to: 'devopstrainingblr@gmail.com,mithuntechnologies@yahoo.com',
-    subject: "Pipeline Build is Over Build # is ${env.BUILD_NUMBER} and Build Status is ${currentBuild.result}",
-    body: "Pipeline Build is Over Build # is ${env.BUILD_NUMBER} and Build Status is ${currentBuild.result}",
-    replyTo: 'devopstrainingblr@gmail.com'
-  }
-  failure
-  {
-    emailext to: 'devopstrainingblr@gmail.com,mithuntechnologies@yahoo.com',
-    subject: "Pipeline Build is Over Build # is ${env.BUILD_NUMBER} and Build Status is ${currentBuild.result}",
-    body: "Pipeline Build is Over Build # is ${env.BUILD_NUMBER} and Build Status is ${currentBuild.result}",
-    replyTo: 'devopstrainingblr@gmail.com'
-    }
-  }
+                stage("build") {
+                     steps {
+                             sh 'sudo mvn clean package'
+                             }
+                           }
+                stage("build-image") {
+                     steps {
+                             sh 'sudo docker build -t java-repo1:$BUILD_TAG .'
+                             sh 'sudo docker tag java-repo:$BUILD_TAG  yahayakhan/pipeline-java:BUILD_TAG'
+                             }
+                }
+                stage("dockerlogin") {
+                     steps { 
+		              withCredentials([string(credentialsId: 'dockerhub_pass', variable: 'dockerhub_pass_variable')]) { {
+			            sh 'sudo docker login -u yahayakhan -p $(dockerhub_pass_variable)'
+					        sh 'sudo docker push yahayakhan/pipeline-java:$BUILD _TAG'
+			             }
+		            }
+		      
+		}
+		stage("QAT TESTING") {
+		      steps {  
+		          sh 'sudo docker run -dit --name web100tom -p 8090:8080 yahayakhan/pipeline-java:$BUILD_TAG'
+                    } 
+	        }
+
+
+	        stage("test-website") {
+	             steps { 
+		             sh 'sudo sleep 20'
+		             sh 'sudo curl --ipv4 http://localhost:8090'
+
+                }
+	        }
+}
 }
