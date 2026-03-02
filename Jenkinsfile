@@ -14,7 +14,7 @@ pipeline {
                            }
                 stage("build-image") {
                      steps {
-                             sh 'sudo docker build -t java-repo1:$BUILD_TAG .'
+                             sh 'sudo docker build -t java-repo:$BUILD_TAG .'
                              sh 'sudo docker tag java-repo:$BUILD_TAG  yahayakhan/pipeline-java:BUILD_TAG'
                              }
                 }
@@ -22,7 +22,7 @@ pipeline {
                      steps { 
 		              withCredentials([string(credentialsId: 'dockerhub_pass', variable: 'dockerhub_pass_variable')]) { 
 			            sh 'sudo docker login -u yahayakhan -p $(dockerhub_pass_variable)'
-					        sh 'sudo docker push yahayakhan/pipeline-java:$BUILD _TAG'
+					        sh 'sudo docker push yahayakhan/pipeline-java:${BUILD _TAG}'
 			             }
 		            }
 		      
